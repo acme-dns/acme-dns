@@ -25,7 +25,7 @@ For longer explanation of the underlying issue and other proposed solutions, see
 
 ## Usage
 
-A client application for acme-dns with support for Certbot authentication hooks is available at: [https://github.com/acme-dns/acme-dns-client](https://github.com/acme-dns/acme-dns-client).
+Multiple [client applications](README.md#clients) exist for acme-dns with different features and different support for Certbot and other ACME clients' authentication hooks.
 
 [![asciicast](https://asciinema.org/a/94903.png)](https://asciinema.org/a/94903)
 
@@ -321,6 +321,8 @@ use for the renewal.
 
 ## Clients
 
+- acme-dns-client by joohoi (written in Go): [https://github.com/acme-dns/acme-dns-client](https://github.com/acme-dns/acme-dns-client)
+- acme-dns-client-2 by maddes-b (written in Python): [https://github.com/maddes-b/acme-dns-client-2](https://github.com/maddes-b/acme-dns-client-2)
 - acme.sh: [https://github.com/Neilpang/acme.sh](https://github.com/Neilpang/acme.sh)
 - Certify The Web: [https://github.com/webprofusion/certify](https://github.com/webprofusion/certify)
 - cert-manager: [https://github.com/jetstack/cert-manager](https://github.com/jetstack/cert-manager)
@@ -333,6 +335,7 @@ use for the renewal.
 ### Authentication hooks
 
 - acme-dns-client with Certbot authentication hook: [https://github.com/acme-dns/acme-dns-client](https://github.com/acme-dns/acme-dns-client)
+- acme-dns-client-2 with Certbot and acme.sh authentication hook: [https://github.com/maddes-b/acme-dns-client-2](https://github.com/maddes-b/acme-dns-client-2)
 - Certbot authentication hook in Python:  [https://github.com/joohoi/acme-dns-certbot-joohoi](https://github.com/joohoi/acme-dns-certbot-joohoi)
 - Certbot authentication hook in Go: [https://github.com/koesie10/acme-dns-certbot-hook](https://github.com/koesie10/acme-dns-certbot-hook)
 
@@ -340,6 +343,11 @@ use for the renewal.
 
 - Generic client library in Python ([PyPI](https://pypi.python.org/pypi/pyacmedns/)): [https://github.com/joohoi/pyacmedns](https://github.com/joohoi/pyacmedns)
 - Generic client library in Go: [https://github.com/cpu/goacmedns](https://github.com/cpu/goacmedns)
+- acme-dns-client-2 with library in Python: [https://github.com/maddes-b/acme-dns-client-2](https://github.com/maddes-b/acme-dns-client-2)
+
+### Miscellaneous
+
+- Convert Certbot LE account for acme-dns: [https://github.com/maddes-b/linux-stuff/tree/main/acme.sh](https://github.com/maddes-b/linux-stuff/tree/main/acme.sh) - do not care about the script name
 
 
 
