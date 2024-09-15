@@ -308,6 +308,10 @@ The RESTful acme-dns API can be exposed over HTTPS in two ways:
 Where possible the first option is recommended. This is the easiest and safest
 way to have acme-dns expose its API over HTTPS.
 
+**Attention**: The option `tls = "letsencryptstaging"` should be used during initial setup of acme-dns.
+It avoids adding to the rate limit of the productive Let's Encrypt account.
+After successful setup switch to one of the above options.
+
 **Warning**: If you choose to use `tls = "cert"` you must take care that the
 certificate *does not expire*! If it does and the ACME client you use to issue the
 certificate depends on the ACME DNS API to update TXT records you will be stuck
