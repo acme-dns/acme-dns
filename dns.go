@@ -130,25 +130,28 @@ func (d *DNSServer) readQuery(m *dns.Msg) {
 	}
 }
 
-func (d *DNSServer) getRecord(q dns.Question) ([]dns.RR, error) {
+func (d *DNSServer) getRecord(q dns.Question) ([]dns.RR, bool, error) {
 	var rr []dns.RR
 	var cnames []dns.RR
+	var hasOther bool = false
 	domain, ok := d.Domains[strings.ToLower(q.Name)]
 	if !ok {
-		return rr, fmt.Errorf("No records for domain %s", q.Name)
+		return rr, hasOther, fmt.Errorf("No records for domain %s", q.Name)
 	}
 	for _, ri := range domain.Records {
 		if ri.Header().Rrtype == q.Qtype {
 			rr = append(rr, ri)
-		}
-		if ri.Header().Rrtype == dns.TypeCNAME {
-			cnames = append(cnames, ri)
+		} else {
+			hasOther = true
+			if ri.Header().Rrtype == dns.TypeCNAME {
+				cnames = append(cnames, ri)
+			}
 		}
 	}
 	if len(rr) == 0 {
-		return cnames, nil
+		return cnames, hasOther, nil
 	}
-	return rr, nil
+	return rr, hasOther, nil
 }
 
 // answeringForDomain checks if we have any records for a domain
@@ -198,7 +201,8 @@ func (d *DNSServer) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 	if !d.isOwnChallenge(q.Name) && !d.answeringForDomain(q.Name) {
 		rcode = dns.RcodeNameError
 	}
-	r, _ := d.getRecord(q)
+	r, hasOther, _ := d.getRecord(q)
+
 	if q.Qtype == dns.TypeTXT {
 		if d.isOwnChallenge(q.Name) {
 			txtRRs, err = d.answerOwnChallenge(q)
@@ -207,6 +211,16 @@ func (d *DNSServer) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 		}
 		if err == nil {
 			r = append(r, txtRRs...)
+		}
+	} else {
+		// must not return NXDOMAIN if another type found for the name
+		// see https://datatracker.ietf.org/doc/html/rfc2308#section-5
+		if len(r) == 0 && !hasOther {
+			// TXT not returned before, must check in DB
+			txtRRs, err = d.answerTXT(q)
+			if err == nil && len(txtRRs) > 0 {
+				rcode = dns.RcodeSuccess
+			}
 		}
 	}
 	if len(r) > 0 {
