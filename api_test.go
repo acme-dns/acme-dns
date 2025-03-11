@@ -74,8 +74,10 @@ func setupRouter(debug bool, noauth bool) http.Handler {
 	api.GET("/health", healthCheck)
 	if noauth {
 		api.POST("/update", noAuth(webUpdatePost))
+		api.POST("/get", noAuth(weGetPost))
 	} else {
 		api.POST("/update", Auth(webUpdatePost))
+		api.POST("/get", Auth(weGetPost))
 	}
 	return c.Handler(api)
 }
