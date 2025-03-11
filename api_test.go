@@ -293,6 +293,18 @@ func TestApiUpdateWithCredentials(t *testing.T) {
 		ContainsKey("txt").
 		NotContainsKey("error").
 		ValueEqual("txt", validTxtData)
+
+	// the get endpoint...
+	e.POST("/get").
+		WithJSON(updateJSON).
+		WithHeader("X-Api-User", newUser.Username.String()).
+		WithHeader("X-Api-Key", newUser.Password).
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ContainsKey("txt").
+		NotContainsKey("error").
+		ValueEqual("txt", validTxtData)
 }
 
 func TestApiUpdateWithCredentialsMockDB(t *testing.T) {

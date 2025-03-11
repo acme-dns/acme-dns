@@ -226,6 +226,22 @@ Note: The `txt` field must be exactly 43 characters long, otherwise acme-dns wil
 $ dig -t txt @auth.example.org d420c923-bbd7-4056-ab64-c3ca54c9b3cf.auth.example.org
 ```
 
+5) If you need to test stored credentials in the future, call the `/get` API endpoint to retrieve the TXT record. Pass the `username`, `password` and `subdomain` received from the `register` call performed above:
+```
+$ curl -X POST \
+  -H "X-Api-User: eabcdb41-d89f-4580-826f-3e62e9755ef2" \
+  -H "X-Api-Key: pbAXVjlIOE01xbut7YnAbkhMQIkcwoHO0ek2j4Q0" \
+  -d '{"subdomain": "d420c923-bbd7-4056-ab64-c3ca54c9b3cf"}' \
+  https://auth.example.org/get
+```
+
+If the credentials are active, you will receive the current TXT record:
+
+```
+{"txt": "FNWgZ4KcKbEWLljs3ZTIEq_y0N3D0yAYqGAaSiJtLIo"}
+```
+
+
 ## Configuration
 
 ```bash
