@@ -74,8 +74,10 @@ func setupRouter(debug bool, noauth bool) http.Handler {
 	api.GET("/health", healthCheck)
 	if noauth {
 		api.POST("/update", noAuth(webUpdatePost))
+		api.POST("/get", noAuth(webGetPost))
 	} else {
 		api.POST("/update", Auth(webUpdatePost))
+		api.POST("/get", Auth(webGetPost))
 	}
 	return c.Handler(api)
 }
@@ -282,6 +284,18 @@ func TestApiUpdateWithCredentials(t *testing.T) {
 	updateJSON["subdomain"] = newUser.Subdomain
 	updateJSON["txt"] = validTxtData
 	e.POST("/update").
+		WithJSON(updateJSON).
+		WithHeader("X-Api-User", newUser.Username.String()).
+		WithHeader("X-Api-Key", newUser.Password).
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ContainsKey("txt").
+		NotContainsKey("error").
+		ValueEqual("txt", validTxtData)
+
+	// the get endpoint...
+	e.POST("/get").
 		WithJSON(updateJSON).
 		WithHeader("X-Api-User", newUser.Username.String()).
 		WithHeader("X-Api-Key", newUser.Password).

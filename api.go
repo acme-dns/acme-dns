@@ -107,6 +107,34 @@ func webUpdatePost(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	_, _ = w.Write(upd)
 }
 
+// this is a version of `webUpdatePost` that does not update or accept TXT record
+// it is used to check credentials
+func webGetPost(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var updStatus int
+	var upd []byte
+	// Get user
+	a, ok := r.Context().Value(ACMETxtKey).(ACMETxt)
+	if !ok {
+		log.WithFields(log.Fields{"error": "context"}).Error("Context error")
+	}
+	atxt, err := DB.GetTXTForDomain(a.Subdomain)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Debug("Error while trying to get record")
+		updStatus = http.StatusInternalServerError
+		upd = jsonError("db_error")
+	} else {
+		for _, v := range atxt {
+			if len(v) > 0 {
+				updStatus = http.StatusOK
+				upd = []byte("{\"txt\": \"" + v + "\"}")
+			}
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(updStatus)
+	_, _ = w.Write(upd)
+}
+
 // Endpoint used to check the readiness and/or liveness (health) of the server.
 func healthCheck(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.WriteHeader(http.StatusOK)
