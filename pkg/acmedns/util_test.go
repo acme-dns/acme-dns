@@ -74,7 +74,7 @@ func TestSetupLoggingError(t *testing.T) {
 		}
 
 		// clean up the file zap creates
-		if "" != test.file {
+		if test.file != "" {
 			_ = os.Remove(test.file)
 		}
 	}

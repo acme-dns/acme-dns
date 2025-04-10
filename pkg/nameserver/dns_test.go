@@ -235,14 +235,14 @@ func TestAuthoritative(t *testing.T) {
 	if answer.Ns[0].Header().Rrtype != dns.TypeSOA {
 		t.Errorf("Was expecting SOA record as answer for NXDOMAIN but got [%s]", dns.TypeToString[answer.Ns[0].Header().Rrtype])
 	}
-	if !answer.MsgHdr.Authoritative {
+	if !answer.Authoritative {
 		t.Errorf("Was expecting authoritative bit to be set")
 	}
 	nanswer, _ := resolv.lookup("nonexsitent.nonauth.tld", dns.TypeA)
 	if len(nanswer.Answer) > 0 {
 		t.Errorf("Didn't expect answers for non authotitative domain query")
 	}
-	if nanswer.MsgHdr.Authoritative {
+	if nanswer.Authoritative {
 		t.Errorf("Authoritative bit should not be set for non-authoritative domain.")
 	}
 }

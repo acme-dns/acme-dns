@@ -76,7 +76,7 @@ func ReadConfig(configFile, fallback string) (AcmeDnsConfig, string, error) {
 		err = fmt.Errorf("configuration file not found")
 	}
 	if err != nil {
-		err = fmt.Errorf("encountered an error while trying to read configuration file:  %s\n", err)
+		err = fmt.Errorf("encountered an error while trying to read configuration file:  %w", err)
 	}
 	return config, usedConfigFile, err
 }
