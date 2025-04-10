@@ -1,15 +1,30 @@
+version: "2"
+linters:
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-linters:
-  # Enable specific linter
-  # https://golangci-lint.run/usage/linters/#enabled-by-default
+formatters:
   enable:
     - gofmt
     - goimports
-linters-settings:
-  goimports:
-    # A comma-separated list of prefixes, which, if set, checks import paths
-    # with the given prefixes are grouped after 3rd-party packages.
-    # Default: ""
-    local-prefixes: github.com/acme-dns/acme-dns
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/acme-dns/acme-dns
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
