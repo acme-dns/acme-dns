@@ -1,23 +1,22 @@
-FROM golang:alpine AS builder
+FROM golang:bookworm AS builder
 LABEL maintainer="joona@kuori.org"
 
-RUN apk add --update gcc musl-dev git
 
-ENV GOPATH /tmp/buildcache
-RUN git clone https://github.com/joohoi/acme-dns /tmp/acme-dns
+ENV GOPATH=/tmp/buildcache
+COPY *.go *.mod *.sum /tmp/acme-dns/
 WORKDIR /tmp/acme-dns
 RUN CGO_ENABLED=1 go build
+RUN mkdir /tmp/dir
 
-FROM alpine:latest
+FROM gcr.io/distroless/base-debian12:nonroot
 
+USER nonroot:nonroot
 WORKDIR /root/
-COPY --from=builder /tmp/acme-dns .
-RUN mkdir -p /etc/acme-dns
-RUN mkdir -p /var/lib/acme-dns
-RUN rm -rf ./config.cfg
-RUN apk --no-cache add ca-certificates && update-ca-certificates
+COPY --from=builder /tmp/acme-dns/acme-dns /acme-dns
+COPY --from=builder /tmp/dir /etc/acme-dns
+COPY --from=builder /tmp/dir /var/lib/acme-dns
 
 VOLUME ["/etc/acme-dns", "/var/lib/acme-dns"]
-ENTRYPOINT ["./acme-dns"]
+ENTRYPOINT ["/acme-dns"]
 EXPOSE 53 80 443
 EXPOSE 53/udp
