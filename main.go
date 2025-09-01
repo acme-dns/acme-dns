@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	stdlog "log"
 	"net/http"
 	"os"
@@ -41,6 +42,13 @@ func main() {
 		log.Errorf("Encountered an error while trying to read configuration file:  %s", err)
 		os.Exit(1)
 	}
+
+    fmt.Printf("%#v\n", Config)
+	err = Config.API.AllowRegistrationFrom.isValid()
+    if err != nil {
+		log.Errorf("allow_registration_from not valid:  %s", err)
+		os.Exit(1)
+    }
 
 	setupLogging(Config.Logconfig.Format, Config.Logconfig.Level)
 

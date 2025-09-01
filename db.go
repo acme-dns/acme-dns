@@ -17,7 +17,7 @@ import (
 )
 
 // DBVersion shows the database version this code uses. This is used for update checks.
-var DBVersion = 1
+var DBVersion = 2
 
 var acmeTable = `
 	CREATE TABLE IF NOT EXISTS acmedns(
@@ -30,7 +30,8 @@ var userTable = `
         Username TEXT UNIQUE NOT NULL PRIMARY KEY,
         Password TEXT UNIQUE NOT NULL,
         Subdomain TEXT UNIQUE NOT NULL,
-		AllowFrom TEXT
+		AllowFrom TEXT,
+		Created INT
     );`
 
 var txtTable = `
@@ -105,6 +106,8 @@ func (d *acmedb) checkDBUpgrades(versionString string) error {
 func (d *acmedb) handleDBUpgrades(version int) error {
 	if version == 0 {
 		return d.handleDBUpgradeTo1()
+	} else if version == 1 {
+		return d.handleDBUpgradeTo2()
 	}
 	return nil
 }
@@ -161,6 +164,20 @@ func (d *acmedb) handleDBUpgradeTo1() error {
 	return err
 }
 
+func (d *acmedb) handleDBUpgradeTo2() error {
+	tx, err := d.DB.Begin()
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		_ = tx.Commit()
+	}()
+	_, _ = tx.Exec("alter table records add Created INT")
+	_, err = tx.Exec("UPDATE acmedns SET Value='2' WHERE Name='db_version'")
+	return err
+}
+
 // Create two rows for subdomain to the txt table
 func (d *acmedb) NewTXTValuesInTransaction(tx *sql.Tx, subdomain string) error {
 	var err error
@@ -191,8 +208,9 @@ func (d *acmedb) Register(afrom cidrslice) (ACMETxt, error) {
         Username,
         Password,
         Subdomain,
-		AllowFrom) 
-        values($1, $2, $3, $4)`
+		AllowFrom,
+		Created)
+        values($1, $2, $3, $4, $5)`
 	if Config.Database.Engine == "sqlite3" {
 		regSQL = getSQLiteStmt(regSQL)
 	}
@@ -202,7 +220,9 @@ func (d *acmedb) Register(afrom cidrslice) (ACMETxt, error) {
 		return a, errors.New("SQL error")
 	}
 	defer sm.Close()
-	_, err = sm.Exec(a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON())
+	timenow := time.Now().Unix()
+
+	_, err = sm.Exec(a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON(), timenow)
 	if err == nil {
 		err = d.NewTXTValuesInTransaction(tx, a.Subdomain)
 	}
