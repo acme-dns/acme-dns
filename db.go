@@ -210,7 +210,7 @@ func (d *acmedb) Register(afrom cidrslice) (ACMETxt, error) {
         Subdomain,
 		AllowFrom,
 		Created)
-        values($1, $2, $3, $4, $4)`
+        values($1, $2, $3, $4, $5)`
 	if Config.Database.Engine == "sqlite3" {
 		regSQL = getSQLiteStmt(regSQL)
 	}
@@ -220,7 +220,7 @@ func (d *acmedb) Register(afrom cidrslice) (ACMETxt, error) {
 		return a, errors.New("SQL error")
 	}
 	defer sm.Close()
-    timenow := time.Now().Unix()
+	timenow := time.Now().Unix()
 
 	_, err = sm.Exec(a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON(), timenow)
 	if err == nil {
