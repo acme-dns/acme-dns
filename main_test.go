@@ -70,7 +70,7 @@ func setupConfig() {
 
 	var generalcfg = general{
 		Domain:        "auth.example.org",
-		Listen:        "127.0.0.1:15353",
+		Listen:        " ,[::1]:15353,,,127.0.0.1:15353 ",
 		Proto:         "udp",
 		Nsname:        "ns1.auth.example.org",
 		Nsadmin:       "admin.example.org",
