@@ -210,7 +210,6 @@ func getProtocols(proto string) []string {
 	switch proto {
 	case "udp", "udp4", "udp6", "tcp", "tcp4", "tcp6":
 		return []string{proto}
-		return []string{"udp"}
 	case "both":
 		return []string{"tcp", "udp"}
 	case "both4":
