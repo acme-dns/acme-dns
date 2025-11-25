@@ -206,11 +206,11 @@ func startHTTPAPI(errChan chan error, config DNSConfig, dnsservers []*DNSServer)
 }
 
 func getProtocols(proto string) []string {
-	switch strings.ToLower(strings.TrimSpace(proto)) {
-	case "udp":
+	proto = strings.ToLower(strings.TrimSpace(proto))
+	switch proto {
+	case "udp", "udp4", "udp6", "tcp", "tcp4", "tcp6":
+		return []string{proto}
 		return []string{"udp"}
-	case "tcp":
-		return []string{"tcp"}
 	case "both":
 		return []string{"tcp", "udp"}
 	case "both4":
