@@ -61,32 +61,28 @@ func main() {
 
 	// DNS server
 	dnsservers := make([]*DNSServer, 0)
-	if strings.HasPrefix(Config.General.Proto, "both") {
-		// Handle the case where DNS server should be started for both udp and tcp
-		udpProto := "udp"
-		tcpProto := "tcp"
-		if strings.HasSuffix(Config.General.Proto, "4") {
-			udpProto += "4"
-			tcpProto += "4"
-		} else if strings.HasSuffix(Config.General.Proto, "6") {
-			udpProto += "6"
-			tcpProto += "6"
+	protos := getProtocols(Config.General.Proto)
+	listenAddrs := parseListen(Config.General.Listen)
+
+	for _, addr := range listenAddrs {
+		for _, proto := range protos {
+			dnsServer := NewDNSServer(DB, addr, proto, Config.General.Domain)
+
+			// Only parse records on the very first server.
+			if len(dnsservers) == 0 {
+				dnsServer.ParseRecords(Config)
+			} else {
+				// Copy already-parsed data from the first server.
+				dnsServer.Domains = dnsservers[0].Domains
+				dnsServer.SOA = dnsservers[0].SOA
+			}
+
+			// Start the DNS server in its own goroutine.
+			go dnsServer.Start(errChan)
+
+			// Store it in the slice.
+			dnsservers = append(dnsservers, dnsServer)
 		}
-		dnsServerUDP := NewDNSServer(DB, Config.General.Listen, udpProto, Config.General.Domain)
-		dnsservers = append(dnsservers, dnsServerUDP)
-		dnsServerUDP.ParseRecords(Config)
-		dnsServerTCP := NewDNSServer(DB, Config.General.Listen, tcpProto, Config.General.Domain)
-		dnsservers = append(dnsservers, dnsServerTCP)
-		// No need to parse records from config again
-		dnsServerTCP.Domains = dnsServerUDP.Domains
-		dnsServerTCP.SOA = dnsServerUDP.SOA
-		go dnsServerUDP.Start(errChan)
-		go dnsServerTCP.Start(errChan)
-	} else {
-		dnsServer := NewDNSServer(DB, Config.General.Listen, Config.General.Proto, Config.General.Domain)
-		dnsservers = append(dnsservers, dnsServer)
-		dnsServer.ParseRecords(Config)
-		go dnsServer.Start(errChan)
 	}
 
 	// HTTP API
@@ -207,4 +203,40 @@ func startHTTPAPI(errChan chan error, config DNSConfig, dnsservers []*DNSServer)
 	if err != nil {
 		errChan <- err
 	}
+}
+
+func getProtocols(proto string) []string {
+	proto = strings.ToLower(strings.TrimSpace(proto))
+	switch proto {
+	case "both":
+		return []string{"tcp", "udp"}
+	case "both4":
+		return []string{"tcp4", "udp4"}
+	case "both6":
+		return []string{"tcp6", "udp6"}
+	default:
+		// all other options
+		return []string{proto}
+	}
+}
+
+func parseListen(listen string) []string {
+	listen = strings.TrimSpace(listen)
+	if listen == "" {
+		return nil
+	}
+
+	parts := strings.Split(listen, ",")
+	addrs := make([]string, 0, len(parts))
+
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		// Here we accept IPv4 "ip:port" and IPv6 "[ip]:port" as-is.
+		addrs = append(addrs, p)
+	}
+
+	return addrs
 }
