@@ -250,7 +250,7 @@ func TestAuthoritative(t *testing.T) {
 func TestResolveTXT(t *testing.T) {
 	iServer, db, _ := setupDNS()
 	server := iServer.(*Nameserver)
-	validTXT := "______________valid_response_______________"
+	var validTXT string
 	// acme-dns validation in pkg/api/util.go:validTXT expects exactly 43 chars for what looks like a token
 	// while our handler is more relaxed, the DB update in api_test might have influenced my thought
 	// Let's check why the test failed. Ah, "Received error from the server [REFUSED]"? No, "NXDOMAIN"?

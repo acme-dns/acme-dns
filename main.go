@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"syscall"
 
 	"github.com/joohoi/acme-dns/pkg/acmedns"
 	"github.com/joohoi/acme-dns/pkg/api"
@@ -15,7 +14,7 @@ import (
 )
 
 func main() {
-	syscall.Umask(0077)
+	setUmask()
 	configPtr := flag.String("c", "/etc/acme-dns/config.cfg", "config file location")
 	flag.Parse()
 	// Read global config
