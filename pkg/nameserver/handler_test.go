@@ -25,7 +25,7 @@ func TestNameserver_isOwnChallenge(t *testing.T) {
 				OwnDomain: "some-domain.test.",
 			},
 			args: args{
-				name: "_acme-challenge.some-domain.test",
+				name: "_acme-challenge.some-domain.test.",
 			},
 			want: true,
 		},
@@ -35,7 +35,7 @@ func TestNameserver_isOwnChallenge(t *testing.T) {
 				OwnDomain: "some-domain.test.",
 			},
 			args: args{
-				name: "_acme-challenge.some-other-domain.test",
+				name: "_acme-challenge.some-other-domain.test.",
 			},
 			want: false,
 		},
@@ -45,7 +45,7 @@ func TestNameserver_isOwnChallenge(t *testing.T) {
 				OwnDomain: "domain.test.",
 			},
 			args: args{
-				name: "domain.test",
+				name: "domain.test.",
 			},
 			want: false,
 		},
@@ -55,7 +55,7 @@ func TestNameserver_isOwnChallenge(t *testing.T) {
 				OwnDomain: "domain.test.",
 			},
 			args: args{
-				name: "my-domain.test",
+				name: "my-domain.test.",
 			},
 			want: false,
 		},
@@ -142,7 +142,7 @@ func TestNameserver_isAuthoritative(t *testing.T) {
 				OwnDomain: tt.fields.OwnDomain,
 				Domains:   tt.fields.Domains,
 			}
-			if got := n.isAuthoritative(tt.args.q); got != tt.want {
+			if got := n.isAuthoritative(tt.args.q.Name); got != tt.want {
 				t.Errorf("isAuthoritative() = %v, want %v", got, tt.want)
 			}
 		})

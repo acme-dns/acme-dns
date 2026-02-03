@@ -1,0 +1,30 @@
+version: '3'
+services:
+  acme-dns:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.e2e
+    ports:
+      - "15353:53/udp"
+      - "18080:80"
+      - "18443:443"
+    volumes:
+      - ./config.cfg:/etc/acme-dns/config.cfg
+      - e2e-data:/var/lib/acme-dns
+
+  tester:
+    image: python:3.9-slim
+    depends_on:
+      - acme-dns
+    volumes:
+      - .:/test
+    working_dir: /test
+    command: >
+      sh -c "pip install -r requirements.txt && python tester.py"
+    environment:
+      - ACMEDNS_URL=http://acme-dns:80
+      - DNS_SERVER=acme-dns
+      - DNS_PORT=53
+
+volumes:
+  e2e-data:

@@ -55,13 +55,14 @@ func (n *Nameserver) answer(q dns.Question) ([]dns.RR, int, bool, error) {
 	var rcode int
 	var err error
 	var txtRRs []dns.RR
-	var authoritative = n.isAuthoritative(q)
-	if !n.isOwnChallenge(q.Name) && !n.answeringForDomain(q.Name) {
+	loweredName := strings.ToLower(q.Name)
+	var authoritative = n.isAuthoritative(loweredName)
+	if !n.isOwnChallenge(loweredName) && !n.answeringForDomain(loweredName) {
 		rcode = dns.RcodeNameError
 	}
-	r, _ := n.getRecord(q)
+	r, _ := n.getRecord(loweredName, q.Qtype)
 	if q.Qtype == dns.TypeTXT {
-		if n.isOwnChallenge(q.Name) {
+		if n.isOwnChallenge(loweredName) {
 			txtRRs, err = n.answerOwnChallenge(q)
 		} else {
 			txtRRs, err = n.answerTXT(q)
@@ -101,31 +102,28 @@ func (n *Nameserver) answerTXT(q dns.Question) ([]dns.RR, error) {
 	return ra, nil
 }
 
-func (n *Nameserver) isAuthoritative(q dns.Question) bool {
-	if n.answeringForDomain(q.Name) {
+func (n *Nameserver) isAuthoritative(name string) bool {
+	if n.answeringForDomain(name) {
 		return true
 	}
-	domainParts := strings.Split(strings.ToLower(q.Name), ".")
-	for i := range domainParts {
-		if n.answeringForDomain(strings.Join(domainParts[i:], ".")) {
+	off := 0
+	for {
+		i, next := dns.NextLabel(name, off)
+		if next {
+			return false
+		}
+		off = i
+		if n.answeringForDomain(name[off:]) {
 			return true
 		}
 	}
-	return false
 }
 
-// isOwnChallenge checks if the query is for the domain of this acme-dns instance. Used for answering its own ACME challenges
 func (n *Nameserver) isOwnChallenge(name string) bool {
-	domainParts := strings.SplitN(name, ".", 2)
-	if len(domainParts) == 2 {
-		if strings.ToLower(domainParts[0]) == "_acme-challenge" {
-			domain := strings.ToLower(domainParts[1])
-			if !strings.HasSuffix(domain, ".") {
-				domain = domain + "."
-			}
-			if domain == n.OwnDomain {
-				return true
-			}
+	if strings.HasPrefix(name, "_acme-challenge.") {
+		domain := name[16:]
+		if domain == n.OwnDomain {
+			return true
 		}
 	}
 	return false
@@ -133,22 +131,22 @@ func (n *Nameserver) isOwnChallenge(name string) bool {
 
 // answeringForDomain checks if we have any records for a domain
 func (n *Nameserver) answeringForDomain(name string) bool {
-	if n.OwnDomain == strings.ToLower(name) {
+	if n.OwnDomain == name {
 		return true
 	}
-	_, ok := n.Domains[strings.ToLower(name)]
+	_, ok := n.Domains[name]
 	return ok
 }
 
-func (n *Nameserver) getRecord(q dns.Question) ([]dns.RR, error) {
+func (n *Nameserver) getRecord(name string, qtype uint16) ([]dns.RR, error) {
 	var rr []dns.RR
 	var cnames []dns.RR
-	domain, ok := n.Domains[strings.ToLower(q.Name)]
+	domain, ok := n.Domains[name]
 	if !ok {
-		return rr, fmt.Errorf("no records for domain %s", q.Name)
+		return rr, fmt.Errorf("no records for domain %s", name)
 	}
 	for _, ri := range domain.Records {
-		if ri.Header().Rrtype == q.Qtype {
+		if ri.Header().Rrtype == qtype {
 			rr = append(rr, ri)
 		}
 		if ri.Header().Rrtype == dns.TypeCNAME {

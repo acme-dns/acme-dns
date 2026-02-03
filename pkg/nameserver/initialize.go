@@ -1,6 +1,7 @@
 package nameserver
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -95,7 +96,7 @@ func (n *Nameserver) Start(errorChannel chan error) {
 	}
 	err := n.Server.ListenAndServe()
 	if err != nil {
-		errorChannel <- err
+		errorChannel <- fmt.Errorf("DNS server %s failed: %w", n.Server.Net, err)
 	}
 }
 

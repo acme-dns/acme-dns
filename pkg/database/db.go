@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -216,7 +215,7 @@ func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
 	if err != nil {
 		d.Logger.Errorw("Database error in prepare",
 			"error", err.Error())
-		return a, errors.New("SQL error")
+		return a, fmt.Errorf("failed to prepare registration statement: %w", err)
 	}
 	defer sm.Close()
 	_, err = sm.Exec(a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON())
@@ -246,7 +245,7 @@ func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
 	defer sm.Close()
 	rows, err := sm.Query(u.String())
 	if err != nil {
-		return acmedns.ACMETxt{}, err
+		return acmedns.ACMETxt{}, fmt.Errorf("failed to query user: %w", err)
 	}
 	defer rows.Close()
 
@@ -261,7 +260,7 @@ func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
 	if len(results) > 0 {
 		return results[0], nil
 	}
-	return acmedns.ACMETxt{}, errors.New("no user")
+	return acmedns.ACMETxt{}, fmt.Errorf("user not found: %s", u.String())
 }
 
 func (d *acmednsdb) GetTXTForDomain(domain string) ([]string, error) {
