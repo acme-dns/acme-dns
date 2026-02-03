@@ -1,11 +1,19 @@
 name: golangci-lint
 on:
   push:
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   golangci:
     name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Setup Go
         uses: actions/setup-go@v5
