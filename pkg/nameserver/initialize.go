@@ -24,6 +24,7 @@ type Nameserver struct {
 	OwnDomain         string
 	NotifyStartedFunc func()
 	SOA               dns.RR
+	mu                sync.RWMutex
 	personalAuthKey   string
 	Domains           map[string]Records
 	errChan           chan error

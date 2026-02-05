@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net/http"
+	"time"
 
 	"github.com/joohoi/acme-dns/pkg/acmedns"
 
@@ -67,10 +68,13 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 		}
 		cfg.GetCertificate = magic.GetCertificate
 		srv := &http.Server{
-			Addr:      host,
-			Handler:   c.Handler(api),
-			TLSConfig: cfg,
-			ErrorLog:  stderrorlog,
+			Addr:         host,
+			Handler:      c.Handler(api),
+			TLSConfig:    cfg,
+			ErrorLog:     stderrorlog,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
 		}
 		a.Logger.Infow("Listening HTTPS",
 			"host", host,
@@ -78,10 +82,13 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 		err = srv.ListenAndServeTLS("", "")
 	case acmedns.ApiTlsProviderCert:
 		srv := &http.Server{
-			Addr:      host,
-			Handler:   c.Handler(api),
-			TLSConfig: cfg,
-			ErrorLog:  stderrorlog,
+			Addr:         host,
+			Handler:      c.Handler(api),
+			TLSConfig:    cfg,
+			ErrorLog:     stderrorlog,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
 		}
 		a.Logger.Infow("Listening HTTPS",
 			"host", host,
