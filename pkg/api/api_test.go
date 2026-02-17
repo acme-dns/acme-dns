@@ -125,6 +125,30 @@ func TestApiRegister(t *testing.T) {
 	response.Value("allowfrom").Array().Elements("123.123.123.123/32", "2001:db8:a0b:12f0::1/32", "::1/64")
 }
 
+func TestApiRegisterAllowFrom(t *testing.T) {
+	router, adnsapi, _ := setupRouter(false, false)
+	adnsapi.Config.API.RegistrationAllowFrom = acmedns.Cidrslice{"192.0.2.0/24", "2001:db8::/32"}
+	server := httptest.NewServer(router)
+	defer server.Close()
+	e := getExpect(t, server)
+
+	for _, test := range []struct {
+		ip     string
+		status int
+	}{
+		{"192.0.2.1", 201},
+		{"2001:db8::1", 201},
+		{"192.168.0.1", 401},
+		{"2001:4860:4860::8888", 401},
+	} {
+		e.POST("/register").
+			WithHeader("X-Forwarded-For", test.ip).
+			Expect().
+			Status(test.status)
+	}
+	adnsapi.Config.API.RegistrationAllowFrom = nil
+}
+
 func TestApiRegisterBadAllowFrom(t *testing.T) {
 	router, _, _ := setupRouter(false, false)
 	server := httptest.NewServer(router)
@@ -490,13 +514,13 @@ func TestUpdateAllowedFromIP(t *testing.T) {
 	} {
 		newreq, _ := http.NewRequest("GET", "/whatever", nil)
 		newreq.RemoteAddr = test.remoteaddr
-		ret := adnsapi.updateAllowedFromIP(newreq, userWithAllow)
+		ret := adnsapi.requestAllowedFromIP(newreq, userWithAllow.AllowFrom)
 		if test.expected != ret {
-			t.Errorf("Test %d: Unexpected result for user with allowForm set", i)
+			t.Errorf("Test %d: Unexpected result for user with allowFrom set", i)
 		}
 
-		if !adnsapi.updateAllowedFromIP(newreq, userWithoutAllow) {
-			t.Errorf("Test %d: Unexpected result for user without allowForm set", i)
+		if !adnsapi.requestAllowedFromIP(newreq, userWithoutAllow.AllowFrom) {
+			t.Errorf("Test %d: Unexpected result for user without allowFrom set", i)
 		}
 	}
 }
