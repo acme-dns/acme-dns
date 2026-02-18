@@ -59,6 +59,10 @@ func prepareConfig(conf AcmeDnsConfig) (AcmeDnsConfig, error) {
 		return conf, fmt.Errorf("invalid value for api.tls, expected one of [%s, %s, %s, %s]", ApiTlsProviderCert, ApiTlsProviderLetsEncrypt, ApiTlsProviderLetsEncryptStaging, ApiTlsProviderNone)
 	}
 
+	if err := conf.API.RegistrationAllowFrom.IsValid(); err != nil {
+		return conf, fmt.Errorf("invalid value for registration_allowfrom: %s", err)
+	}
+
 	return conf, nil
 }
 

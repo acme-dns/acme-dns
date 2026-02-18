@@ -25,6 +25,16 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	var reg []byte
 	var err error
 	aTXT := acmedns.ACMETxt{}
+
+	if !a.requestAllowedFromIP(r, a.Config.API.RegistrationAllowFrom) {
+		regStatus = http.StatusUnauthorized
+		reg = jsonError("forbidden")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(regStatus)
+		_, _ = w.Write(reg)
+		return
+	}
+
 	bdata, _ := io.ReadAll(r.Body)
 	if len(bdata) > 0 {
 		err = json.Unmarshal(bdata, &aTXT)

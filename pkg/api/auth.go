@@ -24,7 +24,7 @@ func (a *AcmednsAPI) Auth(update httprouter.Handle) httprouter.Handle {
 		userOK := false
 		user, err := a.getUserFromRequest(r)
 		if err == nil {
-			if a.updateAllowedFromIP(r, user) {
+			if a.requestAllowedFromIP(r, user.AllowFrom) {
 				dec := json.NewDecoder(r.Body)
 				err = dec.Decode(&postData)
 				if err != nil {
@@ -87,10 +87,10 @@ func (a *AcmednsAPI) getUserFromRequest(r *http.Request) (acmedns.ACMETxt, error
 	return acmedns.ACMETxt{}, fmt.Errorf("invalid key for user %s", uname)
 }
 
-func (a *AcmednsAPI) updateAllowedFromIP(r *http.Request, user acmedns.ACMETxt) bool {
+func (a *AcmednsAPI) requestAllowedFromIP(r *http.Request, c acmedns.Cidrslice) bool {
 	if a.Config.API.UseHeader {
 		ips := getIPListFromHeader(r.Header.Get(a.Config.API.HeaderName))
-		return user.AllowedFromList(ips)
+		return c.AllowedFromList(ips)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -99,5 +99,5 @@ func (a *AcmednsAPI) updateAllowedFromIP(r *http.Request, user acmedns.ACMETxt) 
 			"remoteaddr", r.RemoteAddr)
 		host = ""
 	}
-	return user.AllowedFrom(host)
+	return c.AllowedFrom(host)
 }
