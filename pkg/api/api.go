@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -26,6 +27,39 @@ func Init(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.Sugar
 	return a
 }
 
+func (a *AcmednsAPI) buildHSTSHeader() string {
+	if !a.Config.API.HSTSEnabled {
+		return ""
+	}
+
+	maxAge := a.Config.API.HSTSMaxAge
+	if maxAge <= 0 {
+		maxAge = 31536000
+	}
+
+	header := fmt.Sprintf("max-age=%d", maxAge)
+
+	if a.Config.API.HSTSIncludeSubDom {
+		header += "; includeSubDomains"
+	}
+
+	if a.Config.API.HSTSPreload {
+		header += "; preload"
+	}
+
+	return header
+}
+
+func (a *AcmednsAPI) hstsMiddleware(next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		hstsHeader := a.buildHSTSHeader()
+		if hstsHeader != "" {
+			w.Header().Set("Strict-Transport-Security", hstsHeader)
+		}
+		next(w, r, ps)
+	}
+}
+
 func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 	var err error
 	//TODO: do we want to debug log the HTTP server?
@@ -46,10 +80,10 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 		c.Log = stderrorlog
 	}
 	if !a.Config.API.DisableRegistration {
-		api.POST("/register", a.webRegisterPost)
+		api.POST("/register", a.hstsMiddleware(a.webRegisterPost))
 	}
-	api.POST("/update", a.Auth(a.webUpdatePost))
-	api.GET("/health", a.healthCheck)
+	api.POST("/update", a.hstsMiddleware(a.Auth(a.webUpdatePost)))
+	api.GET("/health", a.hstsMiddleware(a.healthCheck))
 
 	host := a.Config.API.IP + ":" + a.Config.API.Port
 

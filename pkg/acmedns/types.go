@@ -47,6 +47,10 @@ type httpapi struct {
 	CorsOrigins         []string
 	UseHeader           bool   `toml:"use_header"`
 	HeaderName          string `toml:"header_name"`
+	HSTSEnabled         bool   `toml:"hsts_enabled"`
+	HSTSMaxAge          int    `toml:"hsts_max_age"`
+	HSTSIncludeSubDom   bool   `toml:"hsts_include_subdomains"`
+	HSTSPreload         bool   `toml:"hsts_preload"`
 }
 
 // Logging config
