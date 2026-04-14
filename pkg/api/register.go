@@ -29,6 +29,7 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	if len(bdata) > 0 {
 		err = json.Unmarshal(bdata, &aTXT)
 		if err != nil {
+			registrationsTotal.WithLabelValues(metricLabelFailure).Inc()
 			regStatus = http.StatusBadRequest
 			reg = jsonError("malformed_json_payload")
 			w.Header().Set("Content-Type", "application/json")
@@ -41,6 +42,7 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	// Fail with malformed CIDR mask in allowfrom
 	err = aTXT.AllowFrom.IsValid()
 	if err != nil {
+		registrationsTotal.WithLabelValues(metricLabelFailure).Inc()
 		regStatus = http.StatusBadRequest
 		reg = jsonError("invalid_allowfrom_cidr")
 		w.Header().Set("Content-Type", "application/json")
@@ -55,11 +57,14 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 		errstr := fmt.Sprintf("%v", err)
 		reg = jsonError(errstr)
 		regStatus = http.StatusInternalServerError
+		registrationsTotal.WithLabelValues(metricLabelFailure).Inc()
 		a.Logger.Errorw("Error in registration",
 			"error", err.Error())
 	} else {
 		a.Logger.Debugw("Created new user",
 			"user", nu.Username.String())
+		registrationsTotal.WithLabelValues(metricLabelSuccess).Inc()
+		registeredAccounts.Inc()
 		regStruct := RegResponse{nu.Username.String(), nu.Password, nu.Subdomain + "." + a.Config.General.Domain, nu.Subdomain, nu.AllowFrom.ValidEntries()}
 		regStatus = http.StatusCreated
 		reg, err = json.Marshal(regStruct)

@@ -16,6 +16,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/mholt/acmez/v3 v3.1.2
 	github.com/miekg/dns v1.1.65
+	github.com/prometheus/client_golang v1.22.0
 	github.com/rs/cors v1.8.3
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.38.0

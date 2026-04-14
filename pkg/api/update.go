@@ -25,6 +25,7 @@ func (a *AcmednsAPI) webUpdatePost(w http.ResponseWriter, r *http.Request, _ htt
 			"error", "subdomain",
 			"subdomain", atxt.Subdomain,
 			"txt", atxt.Value)
+		challengeUpdatesTotal.WithLabelValues(metricLabelFailure).Inc()
 		updStatus = http.StatusBadRequest
 		upd = jsonError("bad_subdomain")
 	} else if !validTXT(atxt.Value) {
@@ -32,6 +33,7 @@ func (a *AcmednsAPI) webUpdatePost(w http.ResponseWriter, r *http.Request, _ htt
 			"error", "txt",
 			"subdomain", atxt.Subdomain,
 			"txt", atxt.Value)
+		challengeUpdatesTotal.WithLabelValues(metricLabelFailure).Inc()
 		updStatus = http.StatusBadRequest
 		upd = jsonError("bad_txt")
 	} else if validSubdomain(atxt.Subdomain) && validTXT(atxt.Value) {
@@ -39,12 +41,14 @@ func (a *AcmednsAPI) webUpdatePost(w http.ResponseWriter, r *http.Request, _ htt
 		if err != nil {
 			a.Logger.Errorw("Error while trying to update record",
 				"error", err.Error())
+			challengeUpdatesTotal.WithLabelValues(metricLabelFailure).Inc()
 			updStatus = http.StatusInternalServerError
 			upd = jsonError("db_error")
 		} else {
 			a.Logger.Debugw("TXT record updated",
 				"subdomain", atxt.Subdomain,
 				"txt", atxt.Value)
+			challengeUpdatesTotal.WithLabelValues(metricLabelSuccess).Inc()
 			updStatus = http.StatusOK
 			upd = []byte("{\"txt\": \"" + atxt.Value + "\"}")
 		}

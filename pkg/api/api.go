@@ -10,6 +10,7 @@ import (
 
 	"github.com/caddyserver/certmagic"
 	"github.com/julienschmidt/httprouter"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"go.uber.org/zap"
 )
@@ -50,6 +51,7 @@ func (a *AcmednsAPI) Start(dnsservers []acmedns.AcmednsNS) {
 	}
 	api.POST("/update", a.Auth(a.webUpdatePost))
 	api.GET("/health", a.healthCheck)
+	api.Handler(http.MethodGet, "/metrics", promhttp.Handler())
 
 	host := a.Config.API.IP + ":" + a.Config.API.Port
 
