@@ -120,16 +120,10 @@ func (a *AcmednsAPI) setupTLS(dnsservers []acmedns.AcmednsNS) *certmagic.Config 
 	}
 	certmagic.DefaultACME.Email = a.Config.API.NotificationEmail
 
-	magicConf := certmagic.Default
-	magicConf.Logger = a.Logger.Desugar()
-	magicConf.Storage = &storage
-	magicConf.DefaultServerName = a.Config.General.Domain
-	magicCache := certmagic.NewCache(certmagic.CacheOptions{
-		GetConfigForCert: func(cert certmagic.Certificate) (*certmagic.Config, error) {
-			return &magicConf, nil
-		},
-		Logger: a.Logger.Desugar(),
-	})
-	magic := certmagic.New(magicCache, magicConf)
+	certmagic.Default.Logger = a.Logger.Desugar()
+	certmagic.Default.Storage = &storage
+	certmagic.Default.DefaultServerName = a.Config.General.Domain
+
+	magic := certmagic.NewDefault()
 	return magic
 }
