@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -21,13 +22,19 @@ import (
 
 type acmednsdb struct {
 	DB     *sql.DB
-	Mutex  sync.Mutex
+	Mutex  sync.RWMutex
 	Logger *zap.SugaredLogger
 	Config *acmedns.AcmeDnsConfig
 }
 
 // DBVersion shows the database version this code uses. This is used for update checks.
 var DBVersion = 1
+
+// dbDefaultTimeout bounds every database operation. Without it, a single stalled
+// query (e.g. a Postgres connection silently dropped by a stateful firewall, or a
+// locked SQLite file) blocks forever while holding the shared lock, freezing the
+// DNS hot path and leaking a goroutine per query until the process is OOM-killed.
+const dbDefaultTimeout = 20 * time.Second
 
 var acmeTable = `
 	CREATE TABLE IF NOT EXISTS acmedns(
@@ -73,6 +80,18 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 		return d, err
 	}
 	d.DB = db
+	// Bound the connection pool. SQLite (file or :memory:) is not safe for
+	// concurrent writers, so pin it to a single connection — this serializes
+	// access at the pool level, which is the job the global mutex used to do.
+	// For other engines, recycle connections so a silently-dropped TCP
+	// connection is never reused for a query that would then block forever.
+	if config.Database.Engine == "sqlite" {
+		d.DB.SetMaxOpenConns(1)
+	} else {
+		d.DB.SetMaxOpenConns(10)
+		d.DB.SetMaxIdleConns(2)
+		d.DB.SetConnMaxLifetime(5 * time.Minute)
+	}
 	// Check version first to try to catch old versions without version string
 	var versionString string
 	_ = d.DB.QueryRow("SELECT Value FROM acmedns WHERE Name='db_version'").Scan(&versionString)
@@ -188,8 +207,10 @@ func (d *acmednsdb) NewTXTValuesInTransaction(tx *sql.Tx, subdomain string) erro
 func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
 	d.Mutex.Lock()
 	defer d.Mutex.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
+	defer cancel()
 	var err error
-	tx, err := d.DB.Begin()
+	tx, err := d.DB.BeginTx(ctx, nil)
 	// Rollback if errored, commit if not
 	defer func() {
 		if err != nil {
@@ -211,14 +232,14 @@ func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
 	if d.Config.Database.Engine == "sqlite" {
 		regSQL = getSQLiteStmt(regSQL)
 	}
-	sm, err := tx.Prepare(regSQL)
+	sm, err := tx.PrepareContext(ctx, regSQL)
 	if err != nil {
 		d.Logger.Errorw("Database error in prepare",
 			"error", err.Error())
 		return a, fmt.Errorf("failed to prepare registration statement: %w", err)
 	}
 	defer sm.Close()
-	_, err = sm.Exec(a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON())
+	_, err = sm.ExecContext(ctx, a.Username.String(), passwordHash, a.Subdomain, a.AllowFrom.JSON())
 	if err == nil {
 		err = d.NewTXTValuesInTransaction(tx, a.Subdomain)
 	}
@@ -226,8 +247,10 @@ func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
 }
 
 func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
-	d.Mutex.Lock()
-	defer d.Mutex.Unlock()
+	d.Mutex.RLock()
+	defer d.Mutex.RUnlock()
+	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
+	defer cancel()
 	var results []acmedns.ACMETxt
 	getSQL := `
 	SELECT Username, Password, Subdomain, AllowFrom
@@ -238,12 +261,12 @@ func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
 		getSQL = getSQLiteStmt(getSQL)
 	}
 
-	sm, err := d.DB.Prepare(getSQL)
+	sm, err := d.DB.PrepareContext(ctx, getSQL)
 	if err != nil {
 		return acmedns.ACMETxt{}, err
 	}
 	defer sm.Close()
-	rows, err := sm.Query(u.String())
+	rows, err := sm.QueryContext(ctx, u.String())
 	if err != nil {
 		return acmedns.ACMETxt{}, fmt.Errorf("failed to query user: %w", err)
 	}
@@ -264,8 +287,10 @@ func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
 }
 
 func (d *acmednsdb) GetTXTForDomain(domain string) ([]string, error) {
-	d.Mutex.Lock()
-	defer d.Mutex.Unlock()
+	d.Mutex.RLock()
+	defer d.Mutex.RUnlock()
+	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
+	defer cancel()
 	domain = acmedns.SanitizeString(domain)
 	var txts []string
 	getSQL := `
@@ -275,12 +300,12 @@ func (d *acmednsdb) GetTXTForDomain(domain string) ([]string, error) {
 		getSQL = getSQLiteStmt(getSQL)
 	}
 
-	sm, err := d.DB.Prepare(getSQL)
+	sm, err := d.DB.PrepareContext(ctx, getSQL)
 	if err != nil {
 		return txts, err
 	}
 	defer sm.Close()
-	rows, err := sm.Query(domain)
+	rows, err := sm.QueryContext(ctx, domain)
 	if err != nil {
 		return txts, err
 	}
@@ -300,6 +325,8 @@ func (d *acmednsdb) GetTXTForDomain(domain string) ([]string, error) {
 func (d *acmednsdb) Update(a acmedns.ACMETxtPost) error {
 	d.Mutex.Lock()
 	defer d.Mutex.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
+	defer cancel()
 	var err error
 	// Data in a is already sanitized
 	timenow := time.Now().Unix()
@@ -313,12 +340,12 @@ func (d *acmednsdb) Update(a acmedns.ACMETxtPost) error {
 		updSQL = getSQLiteStmt(updSQL)
 	}
 
-	sm, err := d.DB.Prepare(updSQL)
+	sm, err := d.DB.PrepareContext(ctx, updSQL)
 	if err != nil {
 		return err
 	}
 	defer sm.Close()
-	_, err = sm.Exec(a.Value, timenow, a.Subdomain)
+	_, err = sm.ExecContext(ctx, a.Value, timenow, a.Subdomain)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,8 @@
 ## v2.0
 - Update goreleaser configuration and add a GitHub action to build a release on new version tags (#395)
 - Huge refactoring and modernization (#325)
+- Breaking change:
+  - config option `database.engine` value `sqlite3` change to `sqlite`
 
 ## v1.1
 - Add timeout to golangci job (#369)
