@@ -79,7 +79,6 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 	if config.Database.Engine == "sqlite3" {
 		logger.Warn("DB: sqlite3 engine has been replaced by the sqlite engine. Please update your config")
 		config.Database.Engine = "sqlite"
-		logger.Info("DB: replacing sqlite3 engine with sqlite engine")
 	}
 
 	db, err := sql.Open(config.Database.Engine, config.Database.Connection)
