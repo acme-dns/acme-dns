@@ -19,6 +19,5 @@ type AcmednsDB interface {
 type AcmednsNS interface {
 	Start(errorChannel chan error)
 	SetOwnAuthKey(key string)
-	SetNotifyStartedFunc(func())
 	ParseRecords()
 }

@@ -32,7 +32,6 @@ type Nameserver struct {
 
 func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *zap.SugaredLogger, errChan chan error) []acmedns.AcmednsNS {
 	dnsservers := make([]acmedns.AcmednsNS, 0)
-	waitLock := sync.Mutex{}
 	if strings.HasPrefix(config.General.Proto, "both") {
 
 		// Handle the case where DNS server should be started for both udp and tcp
@@ -52,21 +51,13 @@ func InitAndStart(config *acmedns.AcmeDnsConfig, db acmedns.AcmednsDB, logger *z
 		dnsservers = append(dnsservers, dnsServerTCP)
 		dnsServerTCP.ParseRecords()
 		// wait for the server to get started to proceed
-		waitLock.Lock()
-		dnsServerUDP.SetNotifyStartedFunc(waitLock.Unlock)
 		go dnsServerUDP.Start(errChan)
-		waitLock.Lock()
-		dnsServerTCP.SetNotifyStartedFunc(waitLock.Unlock)
 		go dnsServerTCP.Start(errChan)
-		waitLock.Lock()
 	} else {
 		dnsServer := NewDNSServer(config, db, logger, config.General.Proto)
 		dnsservers = append(dnsservers, dnsServer)
 		dnsServer.ParseRecords()
-		waitLock.Lock()
-		dnsServer.SetNotifyStartedFunc(waitLock.Unlock)
 		go dnsServer.Start(errChan)
-		waitLock.Lock()
 	}
 	return dnsservers
 }
@@ -92,15 +83,8 @@ func (n *Nameserver) Start(errorChannel chan error) {
 	n.Logger.Infow("Starting DNS listener",
 		"addr", n.Server.Addr,
 		"proto", n.Server.Net)
-	if n.NotifyStartedFunc != nil {
-		n.Server.NotifyStartedFunc = n.NotifyStartedFunc
-	}
 	err := n.Server.ListenAndServe()
 	if err != nil {
 		errorChannel <- fmt.Errorf("DNS server %s failed: %w", n.Server.Net, err)
 	}
-}
-
-func (n *Nameserver) SetNotifyStartedFunc(fun func()) {
-	n.Server.NotifyStartedFunc = fun
 }
