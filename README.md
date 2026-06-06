@@ -121,7 +121,7 @@ See the INSTALL section for information on how to do this.
 
 1) Install [Go 1.13 or newer](https://golang.org/doc/install).
 
-2) Build acme-dns: 
+2) Build acme-dns:
 ```
 git clone https://github.com/joohoi/acme-dns
 cd acme-dns
@@ -188,7 +188,7 @@ docker run --rm --name acmedns                 \
 Note: In this documentation:
 - `auth.example.org` is the hostname of the acme-dns server
 - acme-dns will serve `*.auth.example.org` records
-- `198.51.100.1` is the **public** IP address of the system running acme-dns  
+- `198.51.100.1` is the **public** IP address of the system running acme-dns
 
 These values should be changed based on your environment.
 
@@ -240,11 +240,11 @@ protocol = "both"
 domain = "auth.example.org"
 # zone name server
 nsname = "auth.example.org"
-# admin email address, where @ is substituted with .
+# admin email address, where @ is substituted with .
 nsadmin = "admin.example.org"
 # predefined records served in addition to the TXT
 records = [
-    # domain pointing to the public IP of your acme-dns server 
+    # domain pointing to the public IP of your acme-dns server
     "auth.example.org. A 198.51.100.1",
     # specify that auth.example.org will resolve any *.auth.example.org records
     "auth.example.org. NS auth.example.org.",
