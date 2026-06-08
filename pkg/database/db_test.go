@@ -306,3 +306,19 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("DB Update failed, got error: [%v]", err)
 	}
 }
+
+func TestTXTSubdomainIndex(t *testing.T) {
+	// The DNS hot path filters txt rows by Subdomain on every query; without this
+	// index the lookup degrades to a full table scan as registrations grow.
+	DB := fakeDB()
+	backend := DB.GetBackend()
+	var name string
+	err := backend.QueryRow(
+		"SELECT name FROM sqlite_master WHERE type='index' AND name='idx_txt_subdomain'").Scan(&name)
+	if err != nil {
+		t.Errorf("Expected idx_txt_subdomain index to exist after Init, got error [%v]", err)
+	}
+	if name != "idx_txt_subdomain" {
+		t.Errorf("Expected index name [idx_txt_subdomain], got [%s]", name)
+	}
+}

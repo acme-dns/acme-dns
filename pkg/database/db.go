@@ -36,6 +36,13 @@ var DBVersion = 1
 // DNS hot path and leaking a goroutine per query until the process is OOM-killed.
 const dbDefaultTimeout = 20 * time.Second
 
+// dbReadTimeout bounds the DNS hot-path read (GetTXTForDomain). It is deliberately
+// much shorter than dbDefaultTimeout: a DNS resolver abandons the query within a
+// few seconds, so a 20s ceiling only lets a stalled connection pin a worker long
+// after the client has given up. Failing fast frees the connection and prevents
+// the goroutine pileup that bounded-but-still-slow reads would otherwise cause.
+const dbReadTimeout = 5 * time.Second
+
 var acmeTable = `
 	CREATE TABLE IF NOT EXISTS acmedns(
 		Name TEXT,
@@ -64,6 +71,15 @@ var txtTablePG = `
 		Value   TEXT NOT NULL DEFAULT '',
 		LastUpdate INT
 	);`
+
+// txtIndex backs the DNS hot-path lookup (SELECT ... FROM txt WHERE Subdomain=$1).
+// Without it every DNS query is a full table scan whose latency grows with the
+// number of registered accounts, eventually crossing the read timeout under load.
+// CREATE INDEX IF NOT EXISTS is idempotent and valid for both SQLite and
+// PostgreSQL, so existing deployments gain the index on the next startup with no
+// explicit migration step.
+var txtIndex = `
+	CREATE INDEX IF NOT EXISTS idx_txt_subdomain ON txt (Subdomain);`
 
 // getSQLiteStmt replaces all PostgreSQL prepared statement placeholders (eg. $1, $2) with SQLite variant "?"
 func getSQLiteStmt(s string) string {
@@ -97,6 +113,10 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 		d.DB.SetMaxOpenConns(10)
 		d.DB.SetMaxIdleConns(2)
 		d.DB.SetConnMaxLifetime(5 * time.Minute)
+		// Recycle idle connections quickly so a silently-dropped TCP connection is
+		// retired within a minute instead of lingering until ConnMaxLifetime and
+		// stalling the next query that borrows it.
+		d.DB.SetConnMaxIdleTime(1 * time.Minute)
 	}
 	// Check version first to try to catch old versions without version string
 	var versionString string
@@ -111,6 +131,7 @@ func Init(config *acmedns.AcmeDnsConfig, logger *zap.SugaredLogger) (acmedns.Acm
 	} else {
 		_, _ = d.DB.Exec(txtTablePG)
 	}
+	_, _ = d.DB.Exec(txtIndex)
 	// If everything is fine, handle db upgrade tasks
 	if err == nil {
 		err = d.checkDBUpgrades(versionString)
@@ -295,7 +316,7 @@ func (d *acmednsdb) GetByUsername(u uuid.UUID) (acmedns.ACMETxt, error) {
 func (d *acmednsdb) GetTXTForDomain(domain string) ([]string, error) {
 	d.Mutex.RLock()
 	defer d.Mutex.RUnlock()
-	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), dbReadTimeout)
 	defer cancel()
 	domain = acmedns.SanitizeString(domain)
 	var txts []string
