@@ -1,25 +1,31 @@
-name: Go
+name: Go Coverage
+
 on:
   push:
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
   schedule:
-    # Run every 12 hours, at the 15 minute mark. E.g.
-    # 2020-11-29 00:15:00 UTC, 2020-11-29 12:15:00 UTC, 2020-11-30 00:15:00 UTC
-    - cron:  '15 */12 * * *'
-jobs:
+    - cron: '15 */12 * * *'
 
-  build:
-    name: Build and Unit Test
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'master' }}
+
+jobs:
+  test:
+    name: Build and Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: ^1.13
-
-      - name: Check out code
-        uses: actions/checkout@v2
+          go-version: '1.23'
+          cache: true
 
       - name: Build
         run: go build -v ./...
@@ -27,7 +33,8 @@ jobs:
       - name: Test
         run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
-      - name: Upload Coverage
-        uses: shogo82148/actions-goveralls@v1
+      - name: Send coverage
+        uses: coverallsapp/github-action@v2
         with:
-          path-to-profile: coverage.out
+          file: coverage.out
+          format: golang

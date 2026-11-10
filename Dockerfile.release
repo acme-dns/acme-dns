@@ -1,0 +1,12 @@
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates && update-ca-certificates
+RUN mkdir -p /etc/acme-dns
+RUN mkdir -p /var/lib/acme-dns
+
+COPY acme-dns /usr/local/bin/acme-dns
+
+VOLUME ["/etc/acme-dns", "/var/lib/acme-dns"]
+ENTRYPOINT ["acme-dns"]
+EXPOSE 53 80 443
+EXPOSE 53/udp

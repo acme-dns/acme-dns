@@ -1,7 +1,7 @@
 builds:
   - binary: acme-dns
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - linux
     goarch:
@@ -19,3 +19,17 @@ archives:
 
 signs:
   - artifacts: checksum
+    args: ["--batch", "-u", "{{ .Env.GPG_FINGERPRINT }}", "--output", "${signature}", "--detach-sign", "${artifact}"]
+
+dockers:
+  - image_templates:
+    - "joohoi/acme-dns:{{ .Tag }}"
+    - "joohoi/acme-dns:latest"
+    dockerfile: Dockerfile.release
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.name={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+

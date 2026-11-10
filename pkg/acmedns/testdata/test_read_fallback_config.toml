@@ -1,0 +1,36 @@
+[general]
+listen = "127.0.0.1:53"
+protocol = "both"
+domain = "test.example.org"
+nsname = "test.example.org"
+nsadmin = "test.example.org"
+records = [
+    "test.example.org. A 127.0.0.1",
+    "test.example.org. NS test.example.org.",
+]
+debug = true
+
+[database]
+engine = "dinosaur"
+connection = "roar"
+
+[api]
+ip = "0.0.0.0"
+disable_registration = false
+port = "443"
+tls = "none"
+tls_cert_privkey = "/etc/tls/example.org/privkey.pem"
+tls_cert_fullchain = "/etc/tls/example.org/fullchain.pem"
+acme_cache_dir = "api-certs"
+notification_email = ""
+corsorigins = [
+    "*"
+]
+use_header = true
+header_name = "X-is-gonna-give-it-to-ya"
+
+[logconfig]
+loglevel = "info"
+logtype = "stdout"
+logfile = "./acme-dns.log"
+logformat = "json"
