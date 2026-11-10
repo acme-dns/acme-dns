@@ -24,7 +24,10 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	var regStatus int
 	var reg []byte
 	var err error
-	aTXT := acmedns.ACMETxt{}
+	// default random registration values
+	aTXT := acmedns.NewACMETxt()
+
+	// if request contains overrides, write them into the random credentials
 	bdata, _ := io.ReadAll(r.Body)
 	if len(bdata) > 0 {
 		err = json.Unmarshal(bdata, &aTXT)
@@ -50,7 +53,7 @@ func (a *AcmednsAPI) webRegisterPost(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	// Create new user
-	nu, err := a.DB.Register(aTXT.AllowFrom)
+	nu, err := a.DB.Register(aTXT)
 	if err != nil {
 		errstr := fmt.Sprintf("%v", err)
 		reg = jsonError(errstr)

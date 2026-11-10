@@ -125,6 +125,33 @@ func TestApiRegister(t *testing.T) {
 	response.Value("allowfrom").Array().Elements("123.123.123.123/32", "2001:db8:a0b:12f0::1/32", "::1/64")
 }
 
+func TestApiRegisterWithOverrides(t *testing.T) {
+	router, _, _ := setupRouter(false, false)
+	server := httptest.NewServer(router)
+	defer server.Close()
+	e := getExpect(t, server)
+
+	randomUsername := "326f4c6c-dd39-11f1-9f10-dca632c2a32c"
+	randomPassword := "RANDOM_PASSWORD"
+	// technically can be string, but by previous convention is a UUID
+	randomSubdomain := "2b5c8a6c-45e5-4be3-b4e1-bf6020be3672"
+
+	overrides := map[string]string{
+		"Username":  randomUsername,
+		"Password":  randomPassword,
+		"Subdomain": randomSubdomain}
+
+	response := e.POST("/register").
+		WithJSON(overrides).
+		Expect().
+		Status(http.StatusCreated).
+		JSON().Object()
+
+	response.Value("username").Equal(randomUsername)
+	response.Value("password").Equal(randomPassword)
+	response.Value("subdomain").Equal(randomSubdomain)
+}
+
 func TestApiRegisterBadAllowFrom(t *testing.T) {
 	router, _, _ := setupRouter(false, false)
 	server := httptest.NewServer(router)
@@ -211,7 +238,8 @@ func TestApiUpdateWithInvalidSubdomain(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	e := getExpect(t, server)
-	newUser, err := db.Register(acmedns.Cidrslice{})
+
+	newUser, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not create new user, got error [%v]", err)
 	}
@@ -241,7 +269,8 @@ func TestApiUpdateWithInvalidTxt(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	e := getExpect(t, server)
-	newUser, err := db.Register(acmedns.Cidrslice{})
+
+	newUser, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not create new user, got error [%v]", err)
 	}
@@ -283,7 +312,8 @@ func TestApiUpdateWithCredentials(t *testing.T) {
 	server := httptest.NewServer(router)
 	defer server.Close()
 	e := getExpect(t, server)
-	newUser, err := db.Register(acmedns.Cidrslice{})
+
+	newUser, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not create new user, got error [%v]", err)
 	}
@@ -339,20 +369,23 @@ func TestApiManyUpdateWithCredentials(t *testing.T) {
 	defer server.Close()
 	e := getExpect(t, server)
 	// User without defined CIDR masks
-	newUser, err := db.Register(acmedns.Cidrslice{})
+
+	newUser, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not create new user, got error [%v]", err)
 	}
 
 	// User with defined allow from - CIDR masks, all invalid
 	// (httpexpect doesn't provide a way to mock remote ip)
-	newUserWithCIDR, err := db.Register(acmedns.Cidrslice{"192.168.1.1/32", "invalid"})
+	userWithCidr1 := acmedns.NewACMETxt().WithAllowFrom(acmedns.Cidrslice{"192.168.1.1/32", "invalid"})
+	newUserWithCIDR, err := db.Register(userWithCidr1)
 	if err != nil {
 		t.Errorf("Could not create new user with CIDR, got error [%v]", err)
 	}
 
 	// Another user with valid CIDR mask to match the httpexpect default
-	newUserWithValidCIDR, err := db.Register(acmedns.Cidrslice{"10.1.2.3/32", "invalid"})
+	userWithCidr2 := acmedns.NewACMETxt().WithAllowFrom(acmedns.Cidrslice{"10.1.2.3/32", "invalid"})
+	newUserWithValidCIDR, err := db.Register(userWithCidr2)
 	if err != nil {
 		t.Errorf("Could not create new user with a valid CIDR, got error [%v]", err)
 	}
@@ -397,17 +430,19 @@ func TestApiManyUpdateWithIpCheckHeaders(t *testing.T) {
 	// Use header checks from default header (X-Forwarded-For)
 	adnsapi.Config.API.UseHeader = true
 	// User without defined CIDR masks
-	newUser, err := db.Register(acmedns.Cidrslice{})
+	newUser, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not create new user, got error [%v]", err)
 	}
 
-	newUserWithCIDR, err := db.Register(acmedns.Cidrslice{"192.168.1.2/32", "invalid"})
+	userWithCidr1 := acmedns.NewACMETxt().WithAllowFrom(acmedns.Cidrslice{"192.168.1.2/32", "invalid"})
+	newUserWithCIDR, err := db.Register(userWithCidr1)
 	if err != nil {
 		t.Errorf("Could not create new user with CIDR, got error [%v]", err)
 	}
 
-	newUserWithIP6CIDR, err := db.Register(acmedns.Cidrslice{"2002:c0a8::0/32"})
+	userWithCidrIPv6 := acmedns.NewACMETxt().WithAllowFrom(acmedns.Cidrslice{"2002:c0a8::0/32"})
+	newUserWithIP6CIDR, err := db.Register(userWithCidrIPv6)
 	if err != nil {
 		t.Errorf("Could not create a new user with IP6 CIDR, got error [%v]", err)
 	}

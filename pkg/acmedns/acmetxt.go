@@ -37,11 +37,18 @@ func (a ACMETxt) AllowedFromList(ips []string) bool {
 	return false
 }
 
+func (a ACMETxt) WithAllowFrom(cidr Cidrslice) ACMETxt {
+	copy := a
+	copy.AllowFrom = cidr
+	return copy
+}
+
 func NewACMETxt() ACMETxt {
 	var a = ACMETxt{}
 	password := generatePassword(40)
 	a.Username = uuid.New()
 	a.Password = password
 	a.Subdomain = uuid.New().String()
+	a.AllowFrom = Cidrslice{}
 	return a
 }
