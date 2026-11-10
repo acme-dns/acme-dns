@@ -259,7 +259,7 @@ func TestResolveTXT(t *testing.T) {
 	// Actually, the registration atxt.Value is NOT used for Update, it uses ACMETxtPost.
 	// ACMETxtPost.Value needs to be valid.
 
-	atxt, err := db.Register(acmedns.Cidrslice{})
+	atxt, err := db.Register(acmedns.NewACMETxt())
 	if err != nil {
 		t.Errorf("Could not initiate db record: [%v]", err)
 		return

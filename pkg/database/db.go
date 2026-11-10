@@ -231,7 +231,7 @@ func (d *acmednsdb) NewTXTValuesInTransaction(tx *sql.Tx, subdomain string) erro
 	return err
 }
 
-func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
+func (d *acmednsdb) Register(param acmedns.ACMETxt) (acmedns.ACMETxt, error) {
 	d.Mutex.Lock()
 	defer d.Mutex.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), dbDefaultTimeout)
@@ -246,8 +246,11 @@ func (d *acmednsdb) Register(afrom acmedns.Cidrslice) (acmedns.ACMETxt, error) {
 		}
 		_ = tx.Commit()
 	}()
-	a := acmedns.NewACMETxt()
-	a.AllowFrom = acmedns.Cidrslice(afrom.ValidEntries())
+
+	// filter out invalid IP address entries
+	a := param
+	a.AllowFrom = param.AllowFrom.ValidEntries()
+
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(a.Password), 10)
 	regSQL := `
     INSERT INTO records(

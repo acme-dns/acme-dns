@@ -44,7 +44,8 @@ The method returns a new unique subdomain and credentials needed to update your 
 Fulldomain is where you can point your own `_acme-challenge` subdomain CNAME record to.
 With the credentials, you can update the TXT response in the service to match the challenge token, later referred as \_\_\_validation\_token\_received\_from\_the\_ca\_\_\_, given out by the Certificate Authority.
 
-**Optional:**: You can POST JSON data to limit the `/update` requests to predefined source networks using CIDR notation.
+**Optional:**: You can POST JSON data to limit the `/update` requests to predefined source networks using CIDR notation,
+or supply custom username/password/subdomain values.
 
 ```POST /register```
 
@@ -55,7 +56,10 @@ With the credentials, you can update the TXT response in the service to match th
         "192.168.100.1/24",
         "1.2.3.4/32",
         "2002:c0a8:2a00::0/40"
-    ]
+    ],
+    "Username": "c36f50e8-4632-44f0-83fe-e070fef28a10",
+    "Password": "htB9mR9DYgcu9bX_afHF62erXaH2TS7bg9KW3F7Z",
+    "Subdomain": "8e5700ea-a4bf-41c7-8a77-e990661dcc6a"
 }
 ```
 
